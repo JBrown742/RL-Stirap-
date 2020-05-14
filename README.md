@@ -6,3 +6,7 @@ Miscellany.py -  Contains several plotting functions
 
 Saved_Models/ -  folder containg several of the trained agents
 
+testing the modified dephasing - an attempt at implimenting pure dephasing using RU dynamics
+
+Review - collection of best results so far
+
