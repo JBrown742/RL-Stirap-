@@ -28,14 +28,14 @@ class ControlEnv:
 		Args:
 			num_levels (int): 	Defines the number of energy levels/ accesible quantum states 
 							  	of the system. 3 by default, limited functionality for 5.
-			omega_max (float):	 The maximum value that can be taken by the two pulse.
+			omega_max (float):	 The maximum value that can be taken by the two pulses.
 			omega_multiplier (list, optional):  Determines the ratio between maximum 
 												possible pulse strengths of the two control 
 												pulses.
 			max_time (int): 	Maximum number of timeSTEPS for an episode.
 			timestep (int): 	The length of each individual timestep. (Determines for how
 								long we evolve the system under that portion of the piecewise
-								continuous hamiltonian) 
+								constant hamiltonian) 
 			alpha (float): 		Multiplier for the population transfer term in the reward 
 								fuunction.
 			beta (float): 		Multiplier for the punishing term in the reward function.
