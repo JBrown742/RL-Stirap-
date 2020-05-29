@@ -7,6 +7,7 @@
 import numpy as np 
 import gym
 from gym import spaces
+from collections import deque
 import sys
 py_script = "/Users/jbrown/OneDrive - Queen's University Belfast/python_scripts"
 if py_script is not sys.path:
@@ -21,7 +22,7 @@ class ControlEnv:
 	
 	def __init__(self, num_levels, omega_max, omega_multiplier, max_time, timestep, alpha, beta, detuning, 
 					detuning_fixed, detuning_percent, dephasing, dephasing_sigma, 
-					observation_verbosity):
+					observation_verbosity, recall_len):
 		""" A class of Control environments used in simulating the two barrier control pulse
 			in the Stirap/Ctap regimes.
 			
@@ -90,6 +91,9 @@ class ControlEnv:
 		# matrix, and; 2: Fully density matrix and previous pulse values.
 		self.observation_verbosity = observation_verbosity
 		
+		# The length of the recall window that defines the input state if obs_verbosity=4
+		self.recall_len = recall_len
+		
 		# Define the observation space based on the observation_verbosity
 		if self.observation_verbosity == 0:
 			self.observation_space = spaces.Box(low=0, high=1, shape=((num_levels),), dtype=np.float32)
@@ -99,6 +103,8 @@ class ControlEnv:
 			self.observation_space = spaces.Box(low=0, high=1, shape=((num_levels**2),), dtype=np.float32)
 		elif self.observation_verbosity == 3:
 			self.observation_space = spaces.Box(low=0, high=1, shape=((num_levels**2 + self.num_couplings),), dtype=np.float32)
+		elif self.observation_verbosity == 4:
+			self.observation_space = spaces.Box(low=0, high=1, shape=(self.recall_len*(num_levels**2),), dtype=np.float32)
 		
 		
 	def reset(self):
@@ -111,7 +117,9 @@ class ControlEnv:
 		self.state, self.reduced_state_observation = ctap.initial_state()
 		self.time_step = 0
 		self.omegas = np.zeros(self.num_couplings)
-		self.prev_omegas = np.zeros(self.num_couplings)
+		recall_array = np.zeros((self.recall_len*(self.num_levels**2),))
+		recall_array[-(self.num_levels**2):] = np.absolute(self.state)[:]
+		self.recall_deque = deque(recall_array)
 		if self.observation_verbosity == 0:
 			observation = self.reduced_state_observation
 		elif self.observation_verbosity == 1:
@@ -120,6 +128,8 @@ class ControlEnv:
 			observation = np.absolute(self.state)
 		elif self.observation_verbosity == 3:
 			observation = np.concatenate((np.absolute(self.state), self.omegas), axis=0)
+		elif self.observation_verbosity == 4:
+			observation = np.array(self.recall_deque)
 			
 		
 			
@@ -142,7 +152,6 @@ class ControlEnv:
 			info (dict): 	A dictionary to contain any other information one would like to extract
 		"""
 		ctap = CTAP(self.alpha, self.beta, self.omega_max, self.num_levels)
-		self.prev_omegas=self.omegas
 		
 		self.get_action(action)
 		
@@ -152,14 +161,11 @@ class ControlEnv:
 															 			self.timestep)
 		
 		reward = ctap.get_reward(self.reduced_state_observation)
-		#if self.prev_omegas[0]!=self.omegas[0] or self.prev_omegas[1]!=self.omegas[1]:
-			#reward+=5
-		#else:
-			#pass
 		
 		self.time_step +=1
 		
 		self.state = state_observation
+		
 		
 		if self.observation_verbosity == 0:
 			observation = self.reduced_state_observation
@@ -169,6 +175,11 @@ class ControlEnv:
 			observation = np.absolute(self.state)
 		elif self.observation_verbosity == 3:
 			observation = np.concatenate((np.absolute(self.state), self.omegas), axis=0)
+		elif self.observation_verbosity == 4:
+			for i in range(self.num_levels**2):
+				self.recall_deque.popleft()
+				self.recall_deque.append(np.absolute(state_observation)[i])
+			observation = np.array(self.recall_deque)
 			
 		if self.num_levels == 3:
 			done = bool(np.abs(self.reduced_state_observation[2]) > 0.995 or self.time_step == self.max_time)	  
@@ -202,16 +213,16 @@ class StepEnv(ControlEnv, gym.Env):
 	"""
 
 	
-	def __init__(self, max_step_height, step_size, num_levels=3, omega_max = 100, omega_multiplier = [1,1], max_time = 50, 
-				timestep = 0.025, alpha = 1, beta = 3, detuning = False, detuning_percent =0, 
-				detuning_fixed = False, dephasing = False, dephasing_sigma = 0,  
-				observation_verbosity = 2):
+	def __init__(self, max_step_height, step_size, num_levels=3, omega_max=100, omega_multiplier=[1,1], max_time=50, 
+				timestep=0.025, alpha=1, beta=3, detuning=False, detuning_percent=0, 
+				detuning_fixed=False, dephasing=False, dephasing_sigma=0,  
+				observation_verbosity=2, recall_len=4):
 				
 		super(StepEnv, self).__init__(num_levels = num_levels, omega_max=omega_max, omega_multiplier=omega_multiplier, max_time=max_time, 
 									timestep=timestep, alpha=alpha, beta=beta, detuning=detuning, 
 									detuning_fixed=detuning_fixed, detuning_percent=detuning_percent, 
 									dephasing=dephasing, dephasing_sigma=dephasing_sigma,  
-									observation_verbosity=observation_verbosity)
+									observation_verbosity=observation_verbosity, recall_len=recall_len)
 		
 		# The max number of fixed sized 'steps' the agent can take in on timestep
 		self.max_step_height = max_step_height
@@ -277,14 +288,15 @@ class DiscreteEnv(ControlEnv, gym.Env):
 	#metadata = {'render.modes': ['console']}
 	def __init__(self, discreteness, num_levels=3, omega_max=100, omega_multiplier=[1,1], max_time=50, timestep = 0.025, 
 				alpha=1, beta=3, detuning = False, detuning_percent=0.0, detuning_fixed = False, 
-				dephasing = False, dephasing_sigma = 0.0, observation_verbosity = 2):
+				dephasing = False, dephasing_sigma = 0.0, observation_verbosity = 2, recall_len=4):
 				
 		super(DiscreteEnv, self).__init__(num_levels = num_levels, omega_max=omega_max, omega_multiplier=omega_multiplier, 
 											max_time=max_time, timestep=timestep, alpha=alpha, 
 											beta=beta, detuning=detuning, detuning_fixed=detuning_fixed, 
 											detuning_percent=detuning_percent, dephasing=dephasing, 
 											dephasing_sigma=dephasing_sigma,  
-											observation_verbosity= observation_verbosity)
+											observation_verbosity= observation_verbosity,
+											recall_len=recall_len)
 		
 		
 		self.discreteness = discreteness
@@ -336,14 +348,15 @@ class ContinuousEnv(ControlEnv, gym.Env):
 
 	def __init__(self,  num_levels, omega_max = 100, omega_multiplier=[1,1], max_time = 50, timestep = 0.025, alpha = 1, 
 				beta = 3, detuning = False, detuning_percent =0, detuning_fixed = False, 
-				dephasing = False, dephasing_sigma = 0, observation_verbosity = 2):
+				dephasing = False, dephasing_sigma = 0, observation_verbosity = 2, recall_len=4):
 				
 		super(ContinuousEnv, self).__init__(num_levels = num_levels, omega_max=omega_max, omega_multiplier=omega_multiplier, 
 											max_time=max_time, timestep=timestep, alpha=alpha, 
 											beta=beta, detuning=detuning, detuning_fixed=detuning_fixed, 
 											detuning_percent=detuning_percent, dephasing=dephasing, 
 											dephasing_sigma=dephasing_sigma,  
-											observation_verbosity= observation_verbosity)
+											observation_verbosity= observation_verbosity,
+											recall_len=recall_len)
 		
 		# Define action and observation space
 		# They must be gym.spaces objects

@@ -64,10 +64,10 @@ class CTAP(object):
 			out22 = np.abs(reduced_rho_out[1])
 			out33 = np.abs(reduced_rho_out[2])
 			
-			reward=self.alpha*(-1 + out33 - out22)
+			reward= self.alpha*(out33)
 			if out22 > 0.05:
-				reward -= np.exp(self.beta*out22)
-			elif out33>0.99:
+				reward -= np.exp(self.beta*out22)/np.exp(self.beta)
+			elif out33>0.995:
 				reward+=10
 
 		elif len(reduced_rho_out) == 5:
@@ -130,9 +130,9 @@ class CTAP(object):
 		for i in range(self.num_levels):
 			for j in range(self.num_levels):
 				if i == j+1:
-					ham_array[i,j] = -omegas[j]
+					ham_array[i,j] = -0.5*omegas[j]
 				elif j== i+1:
-					ham_array[i,j] = -omegas[i]
+					ham_array[i,j] = -0.5*omegas[i]
 		hamiltonian = qt.Qobj(ham_array)
 
 		# If the detuning kwarg = True we introduce uniformly random detuning into
@@ -142,12 +142,12 @@ class CTAP(object):
 			delta2	= 0
 		elif detuning_fixed == True:
 			delta1 = detuning_percent*self.omega_max
-			delta2 = detuning_percent*self.omega_max	
+			delta2 = -23.5*delta1	
 		
 		detuning_hamiltonian = qt.Qobj([[0,0,0],
-							[0,delta1,0],
-							[0,0,delta2]
-							])
+										[0,delta1,0],
+										[0,0,delta2]
+										])
 		
 		
 		
