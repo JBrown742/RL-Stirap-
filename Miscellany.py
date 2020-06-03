@@ -22,7 +22,8 @@ class CtapPlot(object):
 		
 		
 	def pop_pulse_plot(self,num_timesteps, model, env, deterministic=True):
-		times = [((env.omega_max*env.timestep)/np.pi)*n for n in range(num_timesteps)]
+		times = [n*env.timestep for n in range(num_timesteps)]
+		#(env.omega_max*env.timestep)/np.pi)
 		obs_vec = np.zeros((num_timesteps, env.num_levels**2), dtype = object)
 		omegas_vec = np.zeros((num_timesteps, env.num_couplings))
 		obs = env.reset()
@@ -37,14 +38,14 @@ class CtapPlot(object):
 		for i in range(env.num_levels):
 			plt.step(times, obs_vec[:,(i*(env.num_levels+1))], label = 'rho'+str(i))
 			plt.legend()
-			plt.xlabel("t[pi/omega_max]")
+			plt.xlabel("t")
 			plt.ylabel('populations')
 
 		plt.figure(2, figsize=(6,5))
 		for i in range(env.num_couplings):
 			plt.step(times, omegas_vec[:,i], label = str(i))
 			plt.legend()
-			plt.xlabel("t[pi/omega_max]")
+			plt.xlabel("t")
 		return
 	
 	def average_plots(self, num_timesteps, model, env, runs, deterministic = True):
@@ -52,7 +53,8 @@ class CtapPlot(object):
 		# So the observation vector will have an array of size num_timesteps=40, each element and array of size 3 and
 		# each element of the inner array contains runs elements corresponding to the rho values at that timestep for the
 		# j runs.
-		times = [((env.omega_max*env.timestep)/np.pi)*n for n in range(num_timesteps)]
+		times = [n*env.timestep for n in range(num_timesteps)]
+		#(env.omega_max*env.timestep)/np.pi)*
 		obs_vec = np.zeros((num_timesteps, env.num_levels, runs), dtype = object)
 		omegas_vec = np.zeros((num_timesteps, env.num_couplings, runs))
 		
@@ -81,22 +83,23 @@ class CtapPlot(object):
 		for i in range(env.num_levels):
 			plt.plot(times, average_obs_vec[:,i], label = 'rho'+str(i))
 		plt.legend()
-		plt.xlabel("t[pi/omega_max]")
+		plt.xlabel("t")
 		plt.ylabel("populations")
 		plt.title("Population dynamics")
 			
 		plt.subplot(1,2,2)
 		for i in range(env.num_couplings):
-			plt.plot(times, average_omegas_vec[:,i], label = str(i))
+			plt.step(times, average_omegas_vec[:,i], label = str(i))
 		plt.legend()
-		plt.xlabel("t[pi/omega_max]")
+		plt.xlabel("t")
 		plt.ylabel('Pulses')
 		plt.title("Averaged Pulse patterns")
 		plt.tight_layout()
 		return
 		
 	def discrete_plots(self,num_timesteps, model, env, deterministic=True):
-		times = [((env.omega_max*env.timestep)/np.pi)*n for n in range(num_timesteps)]
+		times = [n*env.timestep for n in range(num_timesteps)]
+		# (env.omega_max*env.timestep)/np.pi)*
 		obs_vec = np.zeros((num_timesteps, env.num_levels), dtype = object)
 		omegas_vec = np.zeros((num_timesteps, env.num_couplings))
 		obs = env.reset()
@@ -122,10 +125,10 @@ class CtapPlot(object):
 		plt.subplot(gs[2])
 		plt.step(times, omegas_vec[:,1]/env.omega_max, label = str(1), color='orange')
 		plt.legend()
-		plt.xlabel("t[pi/omega_max]")
+		plt.xlabel("t")
 		plt.ylabel("Omega/Omega max")
 		
-		print("Maximum final population: {}  \nMax middle population: {}".format(str(np.max(obs_vec[:,2])), str(np.max(obs_vec[:,1]))))
+		print("Maximum final population: {}  \nMax middle population: {} \n Mean middle population: {}".format(str(np.max(obs_vec[:,2])), str(np.max(obs_vec[:,1])), str(np.mean(obs_vec[:,1]))))
 			
 		return
 		

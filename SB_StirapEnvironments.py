@@ -182,7 +182,8 @@ class ControlEnv:
 			observation = np.array(self.recall_deque)
 			
 		if self.num_levels == 3:
-			done = bool(np.abs(self.reduced_state_observation[2]) > 0.995 or self.time_step == self.max_time)	  
+			done = bool(np.abs(self.reduced_state_observation[2]) > 0.995 or self.time_step == self.max_time)	 
+			# np.abs(self.reduced_state_observation[1]) > 0.1 
 		elif self.num_levels == 5:
 			done = bool(np.abs(self.reduced_state_observation[4]) > 0.995 or self.time_step == self.max_time) 
 
